@@ -1,0 +1,89 @@
+---
+- name: Cisco IOS Configuration Playbook
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    # 1. 変更前の設定を自動バックアップ
+    - name: Backup running config
+      cisco.ios.ios_config:
+        backup: yes
+      register: backup_result
+
+    - name: Display backup file location
+      ansible.builtin.debug:
+        msg: "Backup saved to {{ backup_result.backup_path }}"
+      when: backup_result.backup_path is defined
+
+    # 2. VLANの作成
+    - name: Configure VLANs
+      cisco.ios.ios_vlans:
+        config:
+          - vlan_id: 10
+            name: Ansible_VLAN10
+          - vlan_id: 21
+            name: WORK_VLAN21
+          - vlan_id: 30
+            name: Ansible_VLAN30
+          - vlan_id: 41
+            name: WORK_VLAN41
+          - vlan_id: 50
+            name: Ansible_VLAN50
+          - vlan_id: 61
+            name: WORK_VLAN61
+          - vlan_id: 70
+            name: Ansible_VLAN70
+          - vlan_id: 81
+            name: WORK_VLAN81
+        state: merged
+
+    # 3. インターフェース設定（L2アクセスポート）
+    - name: Configure GigabitEthernet0/1
+      cisco.ios.ios_l2_interfaces:
+        config:
+          - name: GigabitEthernet0/1
+            mode: access
+            access:
+              vlan: 10
+          - name: GigabitEthernet0/2
+            mode: access
+            access:
+              vlan: 21
+          - name: GigabitEthernet0/3
+            mode: access
+            access:
+              vlan: 30
+          - name: GigabitEthernet0/4
+            mode: access
+            access:
+              vlan: 41
+        state: merged
+
+    # 4. インターフェースのDescription設定
+    - name: Set interface description
+      cisco.ios.ios_interfaces:
+        config:
+          - name: GigabitEthernet0/1
+            description: "Connected to XXXXXXX"
+            enabled: true
+          - name: GigabitEthernet0/2
+            description: "AAAAAAAAAAAAAAAAAA"
+            enabled: true
+          - name: GigabitEthernet0/3
+            description: "BBBBBBBBBBBBBBBBB"
+            enabled: true
+          - name: GigabitEthernet1/0
+            description: "CCCCCCCCCCCCCCCCCCC"
+            enabled: true
+          - name: GigabitEthernet1/1
+            description: "DDDDDDDDDDDDDDDDDDDDD"
+            enabled: true
+          - name: GigabitEthernet1/2
+            description: "EEEEEEEEEEEEEEEEEEEEEEEE"
+            enabled: true
+        state: merged
+
+    # 5. 変更があった場合のみ startup-config に保存
+    - name: Save running-config to startup-config
+      cisco.ios.ios_config:
+        save_when: modified
