@@ -1,0 +1,41 @@
+---
+- name: Get Cisco Device Status
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    # 1. 機器の基本情報（OSバージョン、シリアル番号、モデル名など）を取得
+    - name: Gather Cisco IOS facts
+      cisco.ios.ios_facts:
+        gather_subset:
+          - default
+          - hardware
+      register: ios_facts_result
+
+    # 2. 特定の show コマンドを実行（例: インターフェース、CPU、メモリ）
+    - name: Run show commands
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+          - show processes cpu sorted | exclude 0.00%
+          - show processes memory | include Processor
+      register: show_output
+
+    # 3. 取得した基本情報の出力
+    - name: Display Basic System Info
+      ansible.builtin.debug:
+        msg:
+          - "Host Name  : {{ ansible_net_hostname }}"
+          - "Model      : {{ ansible_net_model }}"
+          - "Serial No  : {{ ansible_net_serialnum }}"
+          - "IOS Version: {{ ansible_net_version }}"
+
+    # 4. show ip interface brief の結果出力
+    - name: Display Interface Status
+      ansible.builtin.debug:
+        msg: "{{ show_output.stdout[0].split('\n') }}"
+
+    # 5. CPU使用率（Topプロセス）の出力
+    - name: Display CPU Usage
+      ansible.builtin.debug:
+        msg: "{{ show_output.stdout[1].split('\n') }}"
