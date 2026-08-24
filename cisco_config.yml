@@ -1,0 +1,50 @@
+---
+- name: Cisco IOS Configuration Playbook
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    # 1. 変更前の設定を自動バックアップ
+    - name: Backup running config
+      cisco.ios.ios_config:
+        backup: yes
+      register: backup_result
+
+    - name: Display backup file location
+      ansible.builtin.debug:
+        msg: "Backup saved to {{ backup_result.backup_path }}"
+      when: backup_result.backup_path is defined
+
+    # 2. VLANの作成
+    - name: Configure VLANs
+      cisco.ios.ios_vlans:
+        config:
+          - vlan_id: 90
+            name: Ansible_VLAN
+          - vlan_id: 91
+            name: WORK_VLAN2
+        state: merged
+
+    # 3. インターフェース設定（L2アクセスポート）
+    - name: Configure GigabitEthernet1/0/7
+      cisco.ios.ios_l2_interfaces:
+        config:
+          - name: GigabitEthernet1/0/7
+            mode: access
+            access:
+              vlan: 90
+        state: merged
+
+    # 4. インターフェースのDescription設定
+    - name: Set interface description
+      cisco.ios.ios_interfaces:
+        config:
+          - name: GigabitEthernet1/0/7
+            description: "Connected to XXXXXXX"
+            enabled: true
+        state: merged
+
+    # 5. 変更があった場合のみ startup-config に保存
+    - name: Save running-config to startup-config
+      cisco.ios.ios_config:
+        save_when: modified
